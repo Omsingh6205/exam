@@ -68,6 +68,7 @@ docker ps -a (show dead container)
 [Lab-02(Create Own Image In Docker Hub)]
 
 ->sudo -i
+#install Docker
 ->sudo nano Dockerfile
 ->FROM ubuntu
 MAINTAINER 20210801112@dypiu.ac.in
@@ -87,3 +88,103 @@ CMD ["echo","Image created"]
 ->docker images 
 ->docker pull 20210801013/patni
 
+
+
+[Lab-03 (Pull jenkins image from docker hub)]
+
+->sudo -i
+#install Docker
+->docker pull jenkins/jenkins:lts
+->docker run -p 8080:8080 -p 50000:50000 jenkins/jenkins
+#copy password
+
+
+[Lab-04 (Create private registry on localhost and push any image on that private registry)]
+
+->sudo -i
+#install docker 
+->docker pull registry:latest
+->docker run -d -p 5000:5000 --name registry regisrty:latest
+->docker images
+->docker pull centos 
+->docker images
+->docker tag  centos ka(ImageId) localhost:5000/centos
+->docker push localhost:5000/centos
+->docker images
+->docker rmi -f centos ka imageId
+->docker pull localhost:5000/centos
+->docker images
+
+
+[lab-06 (Install docker compose package on docker then create and run multi-container applications using docker compose.)]
+
+->sudo -i
+#install docker 
+->mkdir singh
+->cd singh
+->nano app.py
+->import time
+import redis
+from flask import Flask
+app = Flask(__name__)
+cache = redis.Redis(host='redis', port=6379)
+def get_hit_count():
+    retries = 5
+    while True:
+        try:
+            return cache.incr('hits')
+        except redis.exceptions.ConnectionError as exc:
+            if retries == 0:
+                raise exc
+            retries -= 1
+            time.sleep(0.5)
+@app.route('/')
+def hello():
+    count = get_hit_count()
+    return 'Hello World! I have been seen {} times.\n'.format(count)
+->ctrl+O enter ctrl+X
+->nano requirements.txt
+flask
+redis
+->ctrl+O enter ctrl+X
+->nano Dockerfile
+# syntax=docker/dockerfile:1
+FROM python:3.10-alpine
+WORKDIR /code
+ENV FLASK_APP=app.py
+ENV FLASK_RUN_HOST=0.0.0.0
+RUN apk add --no-cache gcc musl-dev linux-headers
+COPY requirements.txt requirements.txt
+RUN pip install -r requirements.txt
+EXPOSE 5000
+COPY . .
+CMD ["flask", "run"]
+->ctrl+O enter ctrl+X
+->nano compose.yml
+services:
+  web:
+    build: .
+    ports:
+      - "8000:5000"
+  redis:
+    image: "redis:alpine"
+->ctrl+O enter ctrl+X
+->docker compose up
+#copy public IP with :8000
+
+[Lab-09 (Implementing docker health checks for postgresql database in a containerized environment.)]
+
+->sudo -i
+#install docker 
+->docker container run --name postgres1 -d postgres
+->docker ps -a 
+->docker container run --name pg4 -e POSTGRES_PASSWORD=mypassword -d postgres
+->docker ps -a 
+->docker container exec -it pg4-bash
+->pg_isready -U postgres 
+->exit
+->docker container run --name pg5 -e POSTGRES_PASSWORD=mypassword --health-cmd="pg_isready -U postgres || exit" -d postgres
+->docker ps -a
+->docker container run --name pg6 -e POSTGRES_PASSWORD=mypassword --health-cmd="pg_isready -U root || exit" -d postgres
+#after 2 minutes 
+->docker ps
